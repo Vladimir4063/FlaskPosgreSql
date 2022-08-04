@@ -9,3 +9,5 @@ CREATE TABLE users (
 SELECT FROM * FROM users WHERE id = id
 
 DELETE FROM users WHERE id = id
+
+UPDATE users SET username = %s, email, = %s, password = %s WHERE id = %s

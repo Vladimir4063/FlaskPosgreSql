@@ -1,10 +1,11 @@
+import json
 from flask import Flask, request, jsonify
 from psycopg2 import connect, extras
 from cryptography.fernet import Fernet
 
 app = Flask(__name__)
 
-# cifrar contraseña 
+# cifrar contraseña
 key = Fernet.generate_key()
 
 # connect
@@ -14,11 +15,15 @@ dbname = 'usersdb'
 user = 'postgres'
 password = 'admin'
 
+
 def get_connection():
-    conn = connect(host = host, port = port, dbname = dbname, user = user, password = password)
+    conn = connect(host=host, port=port, dbname=dbname,
+                   user=user, password=password)
     return conn
 
 # Start
+
+
 @app.get('/')
 def home():
     conn = get_connection()
@@ -29,6 +34,7 @@ def home():
     print(result)
     return 'Hello Word'
 # End
+
 
 @app.get('/api/users')
 def get_users():
@@ -43,9 +49,10 @@ def get_users():
 
     return jsonify(users)
 
+
 @app.post('/api/users')
 def create_user():
-    new_user = request.get_json() 
+    new_user = request.get_json()
     username = new_user['username']
     email = new_user['email']
     # encripto psw
@@ -53,55 +60,83 @@ def create_user():
     print(username, email, password)
 
     conn = get_connection()
-    cur = conn.cursor(cursor_factory=extras.RealDictCursor) # RealDictCursor convierte la respuesta en tuplas
+    # RealDictCursor convierte la respuesta en tuplas/filas
+    cur = conn.cursor(cursor_factory=extras.RealDictCursor)
 
     # genero una consulta con variables
     cur.execute('INSERT INTO users (username, email, password) VALUES (%s, %s, %s) RETURNING *',
                 (username, email, password))
-    
+
     new_created_user = cur.fetchone()
     print(new_created_user)
 
-    conn.commit()  
+    conn.commit()
     cur.close()
     conn.close()
 
     return jsonify(new_created_user)
 
+
 @app.delete('/api/users/<id>')
 def delete_user(id):
     conn = get_connection()
     cur = conn.cursor(cursor_factory=extras.RealDictCursor)
-    
+
     # elimino user
-    cur.execute('DELETE FROM users WHERE id = %s',(id,))
+    cur.execute('DELETE FROM users WHERE id = %s RETURNING * ', (id,))
+
+    # traigo el usuario eliminado
+    user = cur.fetchone()
     conn.commit()
-    
-    # traigo nuevamente los usuarios
-    cur.execute('SELECT * FROM users')
-    users = cur.fetchall()
 
     conn.close()
     cur.close()
 
-    return jsonify(users)
+    if user is None:
+        return jsonify({"message": "User not found"}), 404
+    print(user)
+    return jsonify(user)
 
-@app.put('/api/users/1')
-def update_user():
-    return 'updatting users'
+
+@app.put('/api/users/<id>')
+def update_user(id):
+
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=extras.RealDictCursor)
+
+    new_user = request.get_json()
+    username = new_user['username']
+    email = new_user['email']
+    password = Fernet(key).encrypt(bytes(new_user['password'], 'utf-8')) # Encripto contraseña
+
+    cur.execute(
+        'UPDATE users SET username=%s, email = %s, password = %s WHERE id = %s RETURNING *', (username, email, password, id)
+        )
+    update_user = cur.fetchone()
+    conn.commit()
+
+    cur.close()
+    conn.close()
+    if update_user is None:
+        return jsonify({'message': 'User not found'}), 404
+
+    print(update_user)
+    return jsonify(update_user)
+
 
 @app.get('/api/users/<id>')
 def get_user(id):
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute('SELECT * FROM users WHERE id = %s',(id,))
+    cur.execute('SELECT * FROM users WHERE id = %s', (id,))
     user = cur.fetchone()
-    
+
     if user is None:
         return jsonify({'message': 'User not found'}), 404
-    
+
     return jsonify(user)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
