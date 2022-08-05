@@ -32,7 +32,6 @@ def get_connection():
 #     return 'Hello Word'
 # End
 
-
 @app.get('/api/users')
 def get_users():
     conn = get_connection()
@@ -86,8 +85,8 @@ def delete_user(id):
     user = cur.fetchone()
     conn.commit()
 
-    conn.close()
     cur.close()
+    conn.close()
 
     if user is None:
         return jsonify({"message": "User not found"}), 404
@@ -99,6 +98,7 @@ def delete_user(id):
 def update_user(id):
 
     conn = get_connection()
+    # RealDictCursor convierte la respuesta en tuplas/filas
     cur = conn.cursor(cursor_factory=extras.RealDictCursor)
 
     new_user = request.get_json()
