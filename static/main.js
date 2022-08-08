@@ -3,7 +3,8 @@ const userForm = document.querySelector('#userForm')
 
 
 let users = []
-
+editing = false
+userId = null
 // DOMContentLoaded es lo primero que se ejecuta cuando carga la pag
 window.addEventListener('DOMContentLoaded', async () => {
     const response = await fetch('/api/users')
@@ -26,30 +27,47 @@ userForm.addEventListener('submit', async e => {
 
     console.log(username, email, password);
 
-    // funcion que envia al back-end
-    const response = await fetch('/api/users', {
-        method: 'POST',
+    if (!editing) {
+      const response = await fetch("/api/users", {
+        method: "POST",
         headers: {
-            'Content-Type':'application/json'
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-            username:username,
-            email:email,
-            password:password
+          username: username,
+          email: email,
+          password: password,
+        }),
+      });
+
+      const data = await response.json(); // guardo la respuesta del POST y la muestro por consola
+      // console.log(data)
+
+      users.unshift(data); // añado al principio de la lista
+
+    }else{
+        const response = await fetch("/api/users",{
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                username: username,
+                email: email,
+                password: password
+            }),
         })
-    })
-
-    // guardo la respuesta del POST y la muestro por consola
-    const data = await response.json()
-    // console.log(data)
-
-    users.unshift(data) // añado al principio de la lista
+        const data = await response.json();
+        console.log(data)
+    }
+    // funcion que envia al back-end
+    
+    
     renderUser(users)
 
     // reseteo el formulario
     userForm.reset()
 })
-
 
 function renderUser(){
     const userList = document.querySelector('#userList')
@@ -85,8 +103,24 @@ function renderUser(){
         // filtro la nueva list
         users = users.filter(user => user.id !== data.id)
         renderUser(users)
-      });
+        });
+        userList.append(userItem);
 
-      userList.append(userItem);
+        
+        // Editar
+      const btnEdit = userItem.querySelector(".btn-edit")
+
+      btnEdit.addEventListener("click", async (e) => {
+          const response = await fetch(`/api/users/${user.id}`)
+          const data = await response.json()
+        
+          userForm["username"].value = data[1];
+          userForm["email"].value = data[3];
+
+          editing = true
+          userId = data.id
+          console.log(userId)
+
+      })
     })
 }
