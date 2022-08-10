@@ -4,7 +4,7 @@ const userForm = document.querySelector('#userForm')
 
 let users = []
 editing = false
-userId = null
+let userId = null
 // DOMContentLoaded es lo primero que se ejecuta cuando carga la pag
 window.addEventListener('DOMContentLoaded', async () => {
     const response = await fetch('/api/users')
@@ -28,6 +28,7 @@ userForm.addEventListener('submit', async e => {
     console.log(username, email, password);
 
     if (!editing) {
+      // funcion que envia al back-end
       const response = await fetch("/api/users", {
         method: "POST",
         headers: {
@@ -44,9 +45,8 @@ userForm.addEventListener('submit', async e => {
       // console.log(data)
 
       users.unshift(data); // añado al principio de la lista
-
     }else{
-        const response = await fetch("/api/users",{
+        const response = await fetch(`/api/users/${userId}`,{
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -57,12 +57,17 @@ userForm.addEventListener('submit', async e => {
                 password: password
             }),
         })
-        const data = await response.json();
-        console.log(data)
+        const updateUser = await response.json();
+        console.log("update User")
+        console.log(updateUser)
+
+        users = users.map(user => user.id === updateUser.id ? updateUser : user)
+
+        editing = false
+        userId = null
     }
-    // funcion que envia al back-end
     
-    
+    // load users
     renderUser(users)
 
     // reseteo el formulario
@@ -113,12 +118,14 @@ function renderUser(){
       btnEdit.addEventListener("click", async (e) => {
           const response = await fetch(`/api/users/${user.id}`)
           const data = await response.json()
+
+          console.log(data)
         
           userForm["username"].value = data[1];
           userForm["email"].value = data[3];
 
           editing = true
-          userId = data.id
+          userId = data[0]
           console.log(userId)
 
       })
